@@ -32,13 +32,6 @@ def get_html(url, params=''):
     return r
 
 
-def get_len(html):
-    html = get_html(url)
-    parser = BeautifulSoup(html, 'html.parser')
-    items = parser.find_all("a", href="?&sort=standard&desc=0&ustate=N%2CU&size=20&cy=I&atype=C&page")
-    for i in items:
-        print(i)
-
 def engine_power(s):
     
     pattern = r'\d+'
@@ -65,10 +58,6 @@ def get_content2(url):
     html = get_html(url)
     parser = BeautifulSoup(html, 'html.parser')
     items = parser.find_all('div', class_="cl-list-element cl-list-element-gap")
-    
-    # print('\n\n',items)
-    # print('*' * 55)
-    # print('\n\n')
     data = {
         'kw': [],
         'cv': [],
@@ -93,32 +82,40 @@ def get_content2(url):
         data['immatricolazione'].append(dati_diversi[1])
         data['consumo'].append(transform_to_float(dati_diversi[7]))
         data['link'].append("https://www.autoscout24.it" +i.find('a').get("href"))
-    print(i.find('div', class_="cldt-summary-title").get('href'))
     df = pd.DataFrame(data)
     return df
 
 
-car = input('macchina:  ')
+def get_len(html):
+    html = get_html(url)
+    parser = BeautifulSoup(html, 'html.parser')
+    items = parser.find_all("a", href="?&sort=standard&desc=0&ustate=N%2CU&size=20&cy=I&atype=C&page")
+    for i in items:
+        print(i)
 
-lnk = f"https://www.autoscout24.it/lst/{car}?sort=standard&desc=0&ustate=N%2CU&size=20&page="
-df = pd.DataFrame({
-        'price Euro': [],
-        'marchio': [],
-        'motore': [],
-        'kilometri': [],
-        'kw': [],
-        'cv': [],
-        'immatricolazione': [],
-        'consumo': [],
-        'link': []
-        })
-for i in range(1, 21):
-    print(f'parse page {i}')
-    # lst2 += get_content2(lnk + str(i))
-    df = pd.concat([df, get_content2(lnk + str(i))], ignore_index=True)
 
-car = '_'.join(car.split("/"))
-df.to_csv(f"{car}.csv")
+def run():
+    car = input('macchina:  ')
+
+    lnk = f"https://www.autoscout24.it/lst/{car}?sort=standard&desc=0&ustate=N%2CU&size=20&page="
+    df = pd.DataFrame({
+            'price Euro': [],
+            'marchio': [],
+            'motore': [],
+            'kilometri': [],
+            'kw': [],
+            'cv': [],
+            'immatricolazione': [],
+            'consumo': [],
+            'link': []
+            })
+    for i in range(1, 21):
+        print(f'parse page {i}')
+        # lst2 += get_content2(lnk + str(i))
+        df = pd.concat([df, get_content2(lnk + str(i))], ignore_index=True)
+
+    car = '_'.join(car.split("/"))
+    df.to_csv(f"{car}.csv")
 # print(df)
 # dg = get_content2(url)
 # print(dg,22)
