@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
+import multiprocessing
 
 
 HOST = "https://www.autoscout24.it"
@@ -28,6 +29,20 @@ EMISSIONI_CO2 = 'Emissioni di CO2I dati di consumi ed emissioni per le auto usat
 CONSUMO = 'Consumo carburante:I dati di consumi ed emissioni per le auto usate si intendono riferiti al ciclo NEDC. Per le auto nuove, a partire dal 16.2.2021, iI rivenditore deve indicare i valori relativi al consumo di carburante ed emissione di CO2 misurati con il ciclo WLTP. Il rivenditore deve rendere disponibile nel punto vendita una guida gratuita su risparmio di carburante e emissioni di CO2 dei nuovi modelli di autovetture. Anche stile di guida e altri fattori non tecnici influiscono su consumo di carburante e emissioni di CO2. Il CO2 è il gas a effetto serra principalmente responsabile del riscaldamento terrestre.'
 
 CONSUMO_ELETTRICO = 'Consumo di energia elettricaI dati di consumi ed emissioni per le auto usate si intendono riferiti al ciclo NEDC. Per le auto nuove, a partire dal 16.2.2021, iI rivenditore deve indicare i valori relativi al consumo di carburante ed emissione di CO2 misurati con il ciclo WLTP. Il rivenditore deve rendere disponibile nel punto vendita una guida gratuita su risparmio di carburante e emissioni di CO2 dei nuovi modelli di autovetture. Anche stile di guida e altri fattori non tecnici influiscono su consumo di carburante e emissioni di CO2. Il CO2 è il gas a effetto serra principalmente responsabile del riscaldamento terrestre.'
+
+data = {
+    'kw': [],
+    'cv': [],
+    'marchio': [],
+    'price Euro': [],
+    'marchio': [],
+    'motore': [],
+    'kilometri': [],
+    'immatricolazione': [],
+    'consumo': [],
+    'link': []
+}
+data2 = {}
 
 
 def transform_to_float(a):
@@ -67,24 +82,14 @@ def km_average(a):
     return int(a)
 
 
-def get_csv_file(url):
+def get_csv_file(url, number_thread):
+    print(f"runing parsing page {number_thread}")
+    global data
     html = get_html(url)
     parser = BeautifulSoup(html, 'html.parser')
     items = parser.find_all(
         'div', class_="cl-list-element cl-list-element-gap")
-    data = {
-        'kw': [],
-        'cv': [],
-        'marchio': [],
-        'price Euro': [],
-        'marchio': [],
-        'motore': [],
-        'kilometri': [],
-        'immatricolazione': [],
-        'consumo': [],
-        'link': []
-    }
-    data2 = {}
+    
     for i in items:
         dati_diversi = [item for item in i.find(
             'div', class_="cldt-summary-vehicle-data").get_text().split("\n") if item != '']
@@ -104,10 +109,10 @@ def get_csv_file(url):
                 data[i].append(data_dict[i])
             except KeyError:
                 data[i] = [data_dict[i]]
-    df = pd.DataFrame.from_dict(data, orient='index')
-    df = df.transpose()
-    return df
-
+    print(f"finishing parsing page {number_thread}")
+    # df = pd.DataFrame.from_dict(data, orient='index')
+    # df = df.transpose()
+    # return df
 
 def get_data_from_link(link: str) -> dict:
     global dict_data
@@ -132,7 +137,6 @@ def get_data_from_link(link: str) -> dict:
                 dict_data[list_title[item]] = list_data[item]
             return dict_data
 
-
 def run():
     car = input('macchina:  ')
     lnk = f"https://www.autoscout24.it/lst/{car}?sort=standard&desc=0&ustate=N%2CU&size=20&page="
@@ -147,41 +151,28 @@ def run():
         'consumo': [],
         'link': []
     })
-    for i in range(1, 21):
-        print(f'parse page {i}')
 
-        df = pd.concat([df, get_csv_file(lnk + str(i))], ignore_index=True)
+    thr = []
+    for i in range(1, 21):
+
+        t = multiprocessing.Process(target=get_csv_file, args=(lnk + str(i),i))
+        thr.append(t)
+        t.start()
+    for k in range(len(thr)):
+        thr[k].join()
+    
+    df2 = pd.DataFrame.from_dict(data, orient='index')
+    df2 = df2.transpose()
+
+    df = pd.concat([df, df2], ignore_index=True)
+
     car = '_'.join(car.split("/"))
     df.to_csv(f"{car}.csv")
 
 
 if __name__ == '__main__':
+    import time
+    tmp = time.time()
     run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print(time.time() - tmp)
 
